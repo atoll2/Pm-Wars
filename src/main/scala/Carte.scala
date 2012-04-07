@@ -148,12 +148,12 @@ abstract class Carte() {
   def getUnitzJ:Map[Int,HashMap[Case,Unite]]
   val unitz:HashMap[Case,Unite]
 
-  def isProductible(caze:Case,p:Unite) = caze.dessus.getOrElse(false) match {
+  def isProductible(caze:Case,p:Unite,joueur:Joueur) = (joueur.bourse > p.cout) && (caze.dessus.getOrElse(false) match {
     case x:Usine => x.production.exists( _ contains p)
     case _ => false
-  }
+  })
 
-  def produire(caze:Case,p:Unite):Carte=update(Some(p),caze)
+  def produire(caze:Case,p:Unite,j:Joueur):(Carte,Joueur)=(update(Some(p),caze),j.money(-(p.cout)))
 
   def isChV(dep:List[Case],b:Boolean,id:Int) = {
     val uniteO = getUnite(dep.head)

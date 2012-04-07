@@ -4,7 +4,7 @@ object Test {
   //  val carteb:Carte = CarteTetra.plaine()
   val carteg = CarteTetra.readCarte(CarteTetra.readFile("/home/atoll/androidadwa/src/main/scala/Carte.txt"))
 
-  val (j1,j2,j3) = (Joueur(Equipe(1),0),Joueur(Equipe(2),1),Joueur(Equipe(3),2))  
+  val (j1,j2,j3) = (Joueur(Equipe(1)),Joueur(Equipe(2)),Joueur(Equipe(3)))  
   val (f1,f2,f3) = (new Fantassin(j1.id), new Fantassin(j2.id),new Fantassin(j3.id))
   val (f,c) = (new Fantassin(j1.id),carteg((2,1)))
   val chem = carteg((1,0))

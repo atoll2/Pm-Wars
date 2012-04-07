@@ -21,8 +21,10 @@ case class Produire(caze:Caze,unite:Unite) extends Action
 case class Detruire(caze:Caze) extends Action
 case class Embarquement(dep:LCazes) extends Action
 abstract class Event extends Action
-case class Next extends Event
-case class GiveUp extends Event
+case class Start() extends Event
+case class StartT() extends Event
+case class Next() extends Event
+case class GiveUp() extends Event
 
 case class Param(val mByB:Int)
 
@@ -31,40 +33,60 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param)
 
   var lactions:List[Action] = List()
 
-  var tour = -1
-  var historique:List[(Carte,List[Joueur])] = List((crecarte,joueurstart))
+  var tour = 0
+  var historique:List[(Action,Carte,List[Int])] = List((Start(),crecarte,List()))
+  val tabjrs:IndexedSeq[List[Joueur]] = IndexedSeq(joueurstart.map(x=>List(x)):_*)
   override def toString()=historique.head.toString()
-  next
   def tourn = tour/joueurstart.length
   def tourj = tour % joueurstart.length
-  def joueura = joueurs(tourj)
+  def joueura = joueur(tourj)
+  def carte = historique.head._2
+  def joueur(id:Int) = tabjrs(id).head
+  def add(a:Action,carte:Carte=carte,li:List[Joueur]=List()) = (a,carte,update(li))::historique
+  def update(jrs:List[Joueur])= {
+    jrs.foreach(j=>tabjrs.updated(j.id,j::tabjrs(j.id)))
+    jrs.map(_.id)
+  }
   def next = {
-    if (tour >=0) {
-      val resunit = HashMap(joueura.unitz(carte).mapValues((x) => x.reactiverUnite).toSeq:_*)
-      val rescarte = carte.factory(carte.unitz ++: resunit)
-      historique = (rescarte,joueurs)::historique
-    }
+    val resunit = HashMap(joueura.unitz(carte).mapValues((x) => x.reactiverUnite).toSeq:_*)
+    val rescarte = carte.factory(carte.unitz ++: resunit)
+    add(Next(),rescarte)
     tour +=1
-    start(joueura)
+    start(tourj)
   }
   def reset = {
     historique = List(historique.last)
-    tour = -1
+    tour = 0
     next
   }
+  start(tour)
 
   def doIt(a:Action,joueur:Joueur) = {
-      var jrs = joueurs
-      val ncarte:Carte= a match {
-        case Attaque(CheckedC(from),CheckedC(to)) => carte.attaque(from,to).get
-        case Deplacement(CheckedL(pormov)) => carte.deplace(pormov)
-        case Capture(CheckedC(caze)) => carte.capture(caze)
-        case Joindre(CheckedL(dep)) =>  carte.joindre(dep.caz,dep.cazf)
-        case Embarquement(CheckedL(dep)) => carte.embarquement(dep.caz,dep.cazf)
-        case Produire(CheckedC(caze),unite) => carte produire(caze,unite)
-        case Detruire(CheckedC(caze)) => carte.update(None,caze)
+    if(joueur.id==tourj) {
+      val done:(Option[Carte],Option[List[Joueur]]) = a match {
+        case Attaque(CheckedC(from),CheckedC(to)) => (Some(carte.attaque(from,to).get),None)
+        case Deplacement(CheckedL(pormov)) => (Some(carte.deplace(pormov)),None)
+        case Capture(CheckedC(caze)) => (Some(carte.capture(caze)),None)
+        case Joindre(CheckedL(dep)) =>  (Some(carte.joindre(dep.caz,dep.cazf)),None)
+        case Embarquement(CheckedL(dep)) => (Some(carte.embarquement(dep.caz,dep.cazf)),None)
+        case Produire(CheckedC(caze),unite) => {
+          val pro = carte produire(caze,unite,joueur)
+          (Some(pro._1),Some(List(pro._2)))
+        }
+        case Detruire(CheckedC(caze)) => (Some(carte.update(None,caze)),None)
+        case Next() => (None,None)
+        case GiveUp() => (None,None)
       }
-      historique = (ncarte,jrs)::historique    
+      if (done._1.isDefined) {
+        if (done._2.isDefined) add(a,done._1.get,done._2.get)
+        else add(a,done._1.get)
+      }
+      else {
+        if (done._2.isDefined) {
+          add(a,carte,done._2.get)
+        }
+      }
+    }
   }
 
   def checkL(lis:List[(Int,Int)]) = { 
@@ -98,7 +120,7 @@ def checkA(a:Action,joueur:Joueur):Option[Action] = {
             .map(z => Embarquement(CheckedL(z)))        
 
         case Produire(UncheckedC(caze),unite) => 
-          carte.getCase(caze).filter(x => carte.isProductible(x,unite))
+          carte.getCase(caze).filter(x => carte.isProductible(x,unite,joueur))
             .map(x => Produire(CheckedC(x),unite)) 
 
         case Detruire(UncheckedC(caze)) =>
@@ -124,25 +146,14 @@ def checkA(a:Action,joueur:Joueur):Option[Action] = {
 
 
 
-    def carte = historique.head._1
-    def joueurs = historique.head._2
+
     def isTour(joueur:Joueur) = joueura.id == joueur.id
-//    def deplacer(joueur:Joueur,to:PorMov):(Boolean,String) = {
-//      if (isTour(joueur)) {
-//        carte.getUnite(to.caz) match {
-//          case Some(x:Unite) => if (x.joueur.id == joueur.id) {
-//            historique = (carte.deplace(to),joueurs) :: historique
-//            (true,"OK")
-//          } else (false,"L'unité ne t'appartient pas VILE PERSONNAGE, elle appartient à "+x.joueur.toString())
-//            case None => (false,"Ce n'est pas une unité")
-//        }
-//      } else { (false,"Ce n'est pas ton tour")
-//            }
-//    }
+
 
     def inMove(caz:Case) = carte.inMove(caz)
-    def start(player:Joueur) = {
 
+    def start(tourj:Int) = {
+      val player = joueur(tour)
       def repareB(hmunitz:HashMap[Case,Unite],x:Int):(Int,HashMap[Case,Unite]) = {
         player.batiz(hmunitz).foldLeft((0,HashMap[Case,Unite]()))((acc,cazunit) => {
           val repareU = cazunit._2.reparer(x)
@@ -151,7 +162,7 @@ def checkA(a:Action,joueur:Joueur):Option[Action] = {
 
       def getMoney = player.money(player.batiz(carte).foldLeft(0)( (acc,b) => acc + param.mByB))
       val reparation = repareB(player.unitz(carte),20) 
-      historique = (carte.factory(carte.unitz ++: reparation._2),joueurs.updated(tourj,getMoney.money(-(reparation._1)))) :: historique
+      add(StartT(),carte.factory(carte.unitz ++: reparation._2),List(getMoney.money(-(reparation._1))))
     }
 
   }    
@@ -169,9 +180,10 @@ def checkA(a:Action,joueur:Joueur):Option[Action] = {
   case class Equipe(numero:Int)
 
   object Joueur {
+    var id = 0
     val r = new Random()
-    def apply(equipe:Equipe,id:Int):Joueur = new Joueur(r.nextInt(16546).toString(),0,equipe,id)
-    def apply(equipe:Equipe,str:String,id:Int):Joueur = new Joueur(str,0,equipe,id)
+    def apply(equipe:Equipe):Joueur = { id+=1; new Joueur(r.nextInt(16546).toString(),0,equipe,id)}
+    def apply(equipe:Equipe,str:String):Joueur = {id+=1;new Joueur(str,0,equipe,id)}
   }
 
 
