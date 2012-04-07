@@ -1,1 +1,0 @@
-[0m[[0mdebug[0m] [0mpackaging: /opt/android-sdk/platform-tools/aapt package --auto-add-overlay -f -M /home/atoll/androidadwa/target/scala-2.9.1/resource_managed/main/AndroidManifest.xml -S /home/atoll/androidadwa/src/main/res -A /home/atoll/androidadwa/src/main/assets -I /opt/android-sdk/platforms/android-10/android.jar -F /home/atoll/androidadwa/target/resources.apk[0m

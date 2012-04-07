@@ -1,0 +1,15 @@
+;; This config was generated using ensime-config-gen. Feel free to customize its contents manually.
+
+(
+
+:project-name "AdWaP"
+
+:project-package "adwap.android.project"
+
+:sources ("./src/main/scala/")
+
+:compile-jars ("/opt/android-sdk/platforms/android-10/android.jar" "/home/atoll/androidadwa/lib/andengine.jar")
+
+:target "./target/scala-2.9.1/classes/adwap/android/project/"
+
+)

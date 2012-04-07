@@ -1,3 +1,0 @@
-[0m[[0mdebug[0m] [0m/opt/android-sdk/platform-tools/dx -JXmx512m --dex --num-threads=2 --output=/home/atoll/androidadwa/target/classes.dex /home/atoll/androidadwa/target/classes.min.jar[0m
-[0m[[0minfo[0m] [0mDexing /home/atoll/androidadwa/target/classes.dex[0m
-[0m[[0mdebug[0m] [0m[0m

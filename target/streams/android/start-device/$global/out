@@ -1,2 +1,0 @@
-[0m[[0mdebug[0m] [0m/opt/android-sdk/platform-tools/adb -d shell am start -a android.intent.action.MAIN -n adwap.android.project/.MainActivity[0m
-[0m[[0minfo[0m] [0mStarting: Intent { act=android.intent.action.MAIN cmp=adwap.android.project/.MainActivity }[0m
