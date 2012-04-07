@@ -1,0 +1,37 @@
+[0m[[0minfo[0m] [0mPackaging /home/atoll/androidadwa/target/adwap-0.1.apk[0m
+[0m[[0mdebug[0m] [0mUsing keystore: /home/atoll/.android/debug.keystore[0m
+[0m[[0mdebug[0m] [0mPackaging adwap-0.1.apk[0m
+[0m[[0mdebug[0m] [0m/home/atoll/androidadwa/target/resources.apk:[0m
+[0m[[0mdebug[0m] [0m=> assets/fonts/ProstoOne-Regular.ttf[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/fantassin.png[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/fantassin.svg[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/foret.png[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/foret.svg[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/mer.png[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/mer.svg[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/plaine.png[0m
+[0m[[0mdebug[0m] [0m=> assets/gfx/plaine.svg[0m
+[0m[[0mdebug[0m] [0m=> res/layout/main.xml[0m
+[0m[[0mdebug[0m] [0m=> AndroidManifest.xml[0m
+[0m[[0mdebug[0m] [0m=> resources.arsc[0m
+[0m[[0mdebug[0m] [0m/home/atoll/androidadwa/target/classes.dex => classes.dex[0m
+[0m[[0mdebug[0m] [0m/home/atoll/androidadwa/target/classes.min.jar:[0m
+[0m[[0mdebug[0m] [0m=> bin/andengine.jar[0m
+[0m[[0mdebug[0m] [0m=> ext/img/android.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/badge.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/badge.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/clapboard.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/clapboard.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/favicon.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/favicon.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/icon.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/logo.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/logo.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/logo_icon.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/source.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/source.svg[0m
+[0m[[0mdebug[0m] [0m=> ext/img/splash.png[0m
+[0m[[0mdebug[0m] [0m=> ext/img/splash.svg[0m
+[0m[[0mdebug[0m] [0m=> uml/andengine_classdiagram.png[0m
+[0m[[0mdebug[0m] [0m=> uml/andengine_classdiagram.ucls[0m
+[0m[[0mdebug[0m] [0m=> library.properties[0m

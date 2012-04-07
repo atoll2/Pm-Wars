@@ -1,0 +1,84 @@
+package adwap.android.project
+
+import Math._
+import scala.collection.immutable.IndexedSeq
+
+abstract class TypeMap
+case class Iles() extends TypeMap
+case class Continent() extends TypeMap
+
+
+abstract class TypeCase {
+  val defe_inf = 0
+  val defe_veh = 0
+  val furtivite = 0
+  val vision = 0
+}
+
+case class Foret() extends TypeCase {
+  override val defe_inf = 10
+  override val defe_veh = 50
+  override val furtivite = 80
+}
+case class Plaine() extends TypeCase
+case class Mer() extends TypeCase
+case class Montagne() extends TypeCase {
+  override val vision = 50
+}
+
+
+
+abstract class Batiment {
+  val defe_veh = 0
+  val defe_inf = 0
+}
+case class Aucun() extends Batiment
+
+
+abstract case class Usine extends Batiment { val protection = 0 }
+case class Barraque() extends Usine
+case class Airport() extends Usine
+
+abstract case class Fortification extends Batiment
+case class HQ() extends Fortification    
+case class Ville() extends Fortification
+
+class Case(val carte:Carte, val typ:TypeCase,val dessus:Option[Batiment], val coord:(Int,Int)){
+
+                         
+
+  def defe(typu:Unite)= typu match {
+    case x:Infanterie => typ.defe_inf + dessus.getOrElse(Aucun()).defe_inf
+    case x:Vehicule => typ.defe_veh + dessus.getOrElse(Aucun()).defe_veh
+  }
+
+  def range(case2:Case) = carte.range(this,case2)
+  
+}
+
+abstract class Carte() extends Iterator[Case] {
+
+  def getCase(coord:(Int,Int)):Case
+  def getCoord(caze:Case):(Int,Int)=caze.coord
+  def range(case1:Case,case2:Case):Int
+  val contact:List[(Int,Int)]
+  def acote(caz:Case):List[Case]= contact map { case (x:Int,y:Int) => getCase(caz.coord._1+x,caz.coord._2+y)}
+}
+
+
+
+class CarteTetra(val carte:IndexedSeq[IndexedSeq[Case]]) extends Carte() {
+
+  val contact= List((0,-1),(1,0),(0,1),(-1,0))
+  def getCase(coord:(Int,Int) )=  carte(coord._2)(coord._1)
+  def range(case1:Case,case2:Case) = abs(case1.coord._1 - case2.coord._1) + abs(case1.coord._2 - case2.coord._2)
+  def hasNext = carte.iterator.hasNext
+  def next() = carte.iterator.next
+}
+
+object CarteTetra {
+  
+  def empty() = IndexedSeq(IndexedSeq.empty[Case])
+
+
+}

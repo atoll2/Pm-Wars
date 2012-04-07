@@ -1,0 +1,4 @@
+[0m[[0mdebug[0m] [0m/opt/android-sdk/platform-tools/adb -d install -r  /home/atoll/androidadwa/target/adwap-0.1.apk[0m
+[0m[[0minfo[0m] [0m4809 KB/s (1344332 bytes in 0.272s)[0m
+[0m[[0minfo[0m] [0m	pkg: /data/local/tmp/adwap-0.1.apk[0m
+[0m[[0minfo[0m] [0mSuccess[0m

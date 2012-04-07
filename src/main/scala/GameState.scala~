@@ -1,0 +1,7 @@
+package adwap.android.project
+
+class GameState() {
+
+val carte = Carte.empty()
+
+}

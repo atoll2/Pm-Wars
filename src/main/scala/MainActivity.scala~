@@ -1,0 +1,56 @@
+package adwap.android.project
+
+import _root_.android.app.Activity
+import _root_.android.os.Bundle
+
+import org.anddev.andengine.engine.Engine;
+import org.anddev.andengine.engine.camera.ZoomCamera;
+import org.anddev.andengine.engine.options.EngineOptions;
+import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
+import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
+import org.anddev.andengine.entity.scene.Scene;
+import org.anddev.andengine.entity.scene.background.ColorBackground;
+import org.anddev.andengine.entity.util.FPSLogger;
+import org.anddev.andengine.ui.activity.BaseGameActivity;
+
+class MainActivity extends BaseGameActivity   {
+
+val CAMERA_WIDTH = 480
+val CAMERA_HEIGHT = 320
+val TAG = "AndEngineTEst"
+
+var mCamera:ZoomCamera=_
+
+override def onLoadComplete() {
+}
+
+ 
+override def onLoadEngine():Engine = {
+this.mCamera = new ZoomCamera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
+return new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), this.mCamera))
+
+}
+
+ 
+
+override def  onLoadResources() {
+
+// TODO Auto-generated method stub
+
+ 
+
+}
+
+ 
+
+override def onLoadScene():Scene = {
+
+this.mEngine.registerUpdateHandler(new FPSLogger());
+var scene = new Scene(1);
+scene.setBackground(new ColorBackground(0, 0, 0.8784f));
+
+return scene;
+
+}
+
+}
