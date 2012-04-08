@@ -44,7 +44,7 @@ abstract class Unite(val pdv:Int = 100,val munition:Int,val acombattu:Boolean,va
   def factory(podv:Int,mounition:Int=munition,acomb:Boolean=acombattu,movr:Int=mov_e,joueur:Int=joueur):Unite
   def degat(puis:Int,perfo:Int,blind:Int):Int = puis*pdv/10*((perfo-blind).max(0))
   def degat(blind:Int):Int = degat(puissance,perforation,blind)
-  def reactiverUnite = factory(pdv,munition,false,0,joueur)
+  def reactiverUnite = factory(pdv,munition,false,0)
   def reparer(x:Int) = { 
     val repar = x min (x+pdv-100)
     (cout/pdv*repar,factory(pdv+repar,munitionMax,acombattu,mov_e,joueur))
@@ -73,13 +73,13 @@ abstract class Infanterie(override val pdv:Int,override val munition:Int,
 
          }
 
-class Bazooka(override val pdv:Int,override val munition:Int,override val acombattu:Boolean,
+case class Bazooka(override val pdv:Int,override val munition:Int,override val acombattu:Boolean,
               override val mov_e:Int, override val joueur:Int)
 extends Infanterie(pdv,munition,acombattu,mov_e,joueur) with ArmeSecondaire
 {
 
   def this(j:Int)=this(100,0,false,0,j)
-  def factory(podv:Int,munition:Int,acomb:Boolean,movr:Int,joueur:Int)=  new Bazooka(podv,munition,acomb,movr,joueur)
+  def factory(podv:Int,mounition:Int,acomb:Boolean,movr:Int,j:Int)=  copy(pdv=podv,munition=mounition,acombattu=acomb,mov_e=movr,joueur=j)
   val typ = "Bazooka"
   val cout = 3000
   val puissanceS = 8
@@ -94,12 +94,12 @@ extends Infanterie(pdv,munition,acombattu,mov_e,joueur) with ArmeSecondaire
 
 }
 
-class Fantassin(override val pdv:Int,override val acombattu:Boolean,
+case class Fantassin(override val pdv:Int,override val acombattu:Boolean,
                 override val mov_e:Int,override val joueur:Int)
 extends Infanterie(pdv,0,acombattu,mov_e,joueur) with ArmeSecondaire{
   
   def this(joueur:Int)=this(100,false,0,joueur)
-  def factory(podv:Int,whatever:Int,acomb:Boolean,movr:Int,joueur:Int)=  new Fantassin(podv,acomb,movr,joueur)
+  def factory(podv:Int,whatever:Int,acomb:Boolean,movr:Int,j:Int)= copy(pdv=podv,acombattu=acomb,mov_e=movr,joueur=j)
   val typ = "Fantassin"
   val cout = 1000
   val puissanceS = 2

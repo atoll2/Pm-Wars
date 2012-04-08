@@ -10,19 +10,12 @@ object Test {
   val chem = carteg((1,0))
   val (c1,c2,c3) = (carteg((0,0)),carteg((8,3)),carteg((2,1)))        
   val carte = carteg.factory(carteg.update(List((c1,Some(f1)),(c2,Some(f2)),(c3,Some(f3)),(c,Some(f)))))
-  val partie = new Partie(carte,List(j1,j2,j3),Param(1000))
-
+    val partie = new Partie(carte,List(j1,j2,j3),Param(1000))
+  partie.start
   def main(args: Array[String]) = {
 
-    val path = partie.carte.pathf(c1,c2,j1.id)
-//    println(path.path)
-//    carte.dess(path.path)
-      println(carte.inMove(c2).map(_.cazf).length)
-      carte.dess(carte.inMove(c2).map(_.cazf))
-//    println(carte.isJoignable(c1,c))
-//    println(partie.checkA(Deplacement(UncheckedL(path.path.map(_.coord))),j1))
-//    println(partie.checkA(Capture(UncheckedC(c1.coord)),j1))
-//    println(carte.capture(c1))
+
+
 
   }
 }
