@@ -27,7 +27,10 @@ case class Produire(caze:Caze,unite:Unite) extends Action
 case class Detruire(caze:Caze) extends Action
 case class Embarquement(dep:LCazes) extends Action
 abstract class Event extends Action
+case class Equipe(z:Statut,j:Int) extends Event
 case class Message(s:String) extends Event
+case class MessageT(s:String) extends Event
+case class MessageJ(s:String,j:Joueur) extends Event
 case class Answer(b:Boolean) extends Event
 case class Start() extends Event
 case class StartT() extends Event
@@ -55,6 +58,7 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
     jrs.foreach(j=>tabjrs.updated(j.id,j::tabjrs(j.id)))
     jrs.map(_.id)
   }
+  def joueurs = tabjrs.map(_.head).toList
   def next = {
     if (!(joueura.aperdu)) {
     val resunit = HashMap(joueura.unitz(carte).mapValues((x) => x.reactiverUnite).toSeq:_*)
@@ -78,27 +82,31 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
   def act() {
     while(true) {
       receive { 
-        case x:Action => {println("YES");checkA(x,joueura).foreach(doIt(_,joueura))}
-        case _ => println("NO")
+        case (j:Joueur,x:Action) => checkA(x,j).foreach(doIt(_,j))
+        case _ => ()
              }
     }
   }
   def doIt(a:Action,j:Joueur) = {
-    if(j.id==tourj) {
+   
       val done:(Option[Carte],Option[List[Joueur]]) = a match {
-        case Attaque(CheckedC(from),CheckedC(to)) => (Some(carte.attaque(from,to).get),None)
-        case Give(CheckedM(cb),to) => (None,Some(j.give(cb,joueur(to))))
-        case Deplacement(CheckedL(pormov)) => (Some(carte.deplace(pormov)),None)
-        case Capture(CheckedC(caze)) => (Some(carte.capture(caze)),None)
-        case Joindre(CheckedL(dep)) =>  (Some(carte.joindre(dep.caz,dep.cazf)),None)
-        case Embarquement(CheckedL(dep)) => (Some(carte.embarquement(dep.caz,dep.cazf)),None)
-        case Produire(CheckedC(caze),unite) => {
+        case Attaque(CheckedC(from),CheckedC(to))  if (j.id==tourj) => (Some(carte.attaque(from,to).get),None)
+        case Give(CheckedM(cb),to)  if (j.id==tourj) => (None,Some(j.give(cb,joueur(to))))
+        case Deplacement(CheckedL(pormov))  if (j.id==tourj) => (Some(carte.deplace(pormov)),None)
+        case Capture(CheckedC(caze))  if (j.id==tourj) => (Some(carte.capture(caze)),None)
+        case Joindre(CheckedL(dep))  if (j.id==tourj) =>  (Some(carte.joindre(dep.caz,dep.cazf)),None)
+        case Embarquement(CheckedL(dep))  if (j.id==tourj) => (Some(carte.embarquement(dep.caz,dep.cazf)),None)
+        case Produire(CheckedC(caze),unite)  if (j.id==tourj) => {
           val pro = carte produire(caze,unite,j)
           (Some(pro._1),Some(List(pro._2)))
         }
-        case Detruire(CheckedC(caze)) => (Some(carte.update(None,caze)),None)
-        case Next() => { next; (None,None) }
-        case GiveUp() => (None,None)
+        case Detruire(CheckedC(caze))  if (j.id==tourj) => (Some(carte.update(None,caze)),None)
+        case Next()  if (j.id==tourj) => { next; (None,None) }
+        case GiveUp()  if (j.id==tourj) => (None,None)
+        case Equipe(st,z) if (st == Guerre()) => (Some(carte.nvStatut(j.id,z,st)),None)
+        case Message(msg) => { println(msg); (None,None) }
+        case MessageT(msg) => { println(msg); (None,None) }
+        case _ => (None,None)
       }
       if (done._1.isDefined) {
         if (done._2.isDefined) add(a,done._1.get,done._2.get)
@@ -110,7 +118,7 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
         }
       }
     }
-  }
+  
 
   def checkL(lis:List[(Int,Int)]) = { 
     if (lis.forall(carte.getCase(_).isDefined))
@@ -173,7 +181,7 @@ def checkA(a:Action,j:Joueur):Option[Action] = {
 
 
     def isTour(joueur:Joueur) = joueura.id == joueur.id
-
+    def isTour(joueur:Int) = joueura.id == joueur
 
     def inMove(caz:Case) = carte.inMove(caz)
 
@@ -194,7 +202,7 @@ def checkA(a:Action,j:Joueur):Option[Action] = {
   }    
   
   
-abstract class Joueur(name:String,val bourse:Int,equipe:Equipe,val id:Int,val aperdu:Boolean=false){
+abstract class Joueur(name:String,val bourse:Int,val id:Int,val aperdu:Boolean=false){
     override def toString()= "J > Nom:" +name +" & Bourse: " +bourse.toString
     def money(x:Int):Joueur// = new Joueur(name,bourse +x,equipe,id)
     def give(x:Int,y:Joueur) = List(money(-x),y.money(x))
@@ -206,24 +214,29 @@ abstract class Joueur(name:String,val bourse:Int,equipe:Equipe,val id:Int,val ap
     def startp(x:Partie):Unit = ()
   }
 
-case  class Local(name:String,override val bourse:Int,equipe:Equipe,override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,equipe,id,aperdu) {
+case  class Local(name:String,override val bourse:Int, override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,id,aperdu) {
   def money(x:Int)=copy(bourse=bourse+x)
   def perdre=copy(aperdu=true)
-  override def startp(partie:Partie) = { Thread.sleep(1000);partie ! Next()}
+  override def startp(partie:Partie) = {}
 }
 
-case class IA(ia:Int,name:String,override val bourse:Int,equipe:Equipe,override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,equipe,id,aperdu) {
+case class IA(ia:Int,name:String,override val bourse:Int,override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,id,aperdu) {
   def money(x:Int)=copy(bourse=bourse+x)
   def perdre=copy(aperdu=true)
 }
 
-case class Equipe(numero:Int)
+case class Remote(val name:String,override val bourse:Int,override val id:Int,override val aperdu:Boolean,remote:ServerClient) extends Joueur(name,bourse,id,aperdu) {
+  def money(x:Int)=copy(bourse=bourse+x)
+  def perdre=copy(aperdu=true)
+}
+
+
 
 object Joueur {
     var id = -1
     val r = new Random()
-    def apply(equipe:Equipe) = { id+=1; Local(r.nextInt(16546).toString(),0,equipe,id)}
-    def apply(equipe:Equipe,str:String)= {id+=1;Local(str,0,equipe,id)}
+    def apply() = { id+=1; Local(r.nextInt(16546).toString(),0,id)}
+    def apply(str:String)= {id+=1;Local(str,0,id)}
   }
 
 

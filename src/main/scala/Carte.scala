@@ -125,6 +125,11 @@ case class PorMov(path:List[Case],cost:Int) {
 
 }
 
+abstract class Statut
+case class Guerre() extends Statut
+case class Paix() extends Statut
+case class Alliance() extends Statut
+
 abstract class Carte() {
   
   override def toString() = { 
@@ -141,13 +146,17 @@ abstract class Carte() {
         if ((j+1)%(x+1) == 0) println("")
       }
   }
-
+  
+  
+  val equipe:IndexedSeq[IndexedSeq[Statut]]
   val carte:IndexedSeq[IndexedSeq[Case]]
   val carteflat=carte.flatten
   def getUnitz:List[(Case,Unite)]
   def getUnitzJ:Map[Int,HashMap[Case,Unite]]
   val unitz:HashMap[Case,Unite]
-
+  
+  def nvStatut(x:Int,y:Int,z:Statut):Carte
+  
   def isProductible(caze:Case,p:Unite,joueur:Joueur) = (joueur.bourse > p.cout) && (caze.dessus.getOrElse(false) match {
     case x:Usine => x.production.exists( _ contains p)
     case _ => false
@@ -163,7 +172,7 @@ abstract class Carte() {
         case x ::(y :: z) =>  {
           val costO= y.typ.cost(uniteO.get)
           if (costO.isDefined) {
-            val bo = (acote(x).contains(y))&& getUnite(y).forall(_.joueur==id) && ( z!=Nil || b) 
+            val bo = (acote(x).contains(y)) && getUnite(y).forall(x => equipe(id)(x.joueur)!=Guerre) && ( z!=Nil || b) 
             val r = chv(y::z)
             (bo&&r._1,r._2+(y.typ.cost(uniteO.get).get))
           }
@@ -206,11 +215,13 @@ abstract class Carte() {
   def embarquement(from:Case,to:Case) = {
     getUnite(to) match {
       case Some(x:Embarcadaire) => factory(update(List((to,Some(x.embarquer(getUnite(from).get))),(from,None))))
+      case _ => this
     }
   }
 
   def capture(caze:Case)= (caze.dessus,getUnite(caze)) match {
     case (Some(x:Capturable),Some(y:Captur)) => update(caze.factory(Some(x.capture((y.pdv)/2,y.joueur))))
+    case _ => this
   }
 
   def attaqueUni(unite:Unite,ennemi:Unite,caz:Case) = {
@@ -344,17 +355,17 @@ abstract class Carte() {
 
 
 
-class CarteTetra(override val carte:IndexedSeq[IndexedSeq[Case]],override val unitz:HashMap[Case, Unite]) extends Carte() {
+class CarteTetra(val carte:IndexedSeq[IndexedSeq[Case]],val unitz:HashMap[Case, Unite], val equipe:IndexedSeq[IndexedSeq[Statut]]) extends Carte() {
 
   def apply(x:(Int,Int))=carte(x._2)(x._1)
-
+  def nvStatut(x:Int,y:Int,z:Statut)= new CarteTetra(carte,unitz,equipe.updated(x,equipe(x).updated(y,z)).updated(y,equipe(y).updated(x,z)))
   def getUnitz = unitz.toList
   val getUnitzJ = unitz.groupBy( kv => kv._2.joueur)
 
 
   def factory(unit:HashMap[Case, Unite]):Carte = factory(carte,unit)
   def factory(cart:IndexedSeq[IndexedSeq[Case]]):Carte= factory(cart,unitz)
-  def factory(cart:IndexedSeq[IndexedSeq[Case]],unit:HashMap[Case, Unite]):Carte = new CarteTetra(cart,unit)
+  def factory(cart:IndexedSeq[IndexedSeq[Case]],unit:HashMap[Case, Unite]):Carte = new CarteTetra(cart,unit,equipe)
 
   def delete(caz:Case) = update(unitz,caz,None)
   def update(caz:Case,unite:Option[Unite]):(Option[Unite],HashMap[Case,Unite]) =  update(unitz,caz,unite)
@@ -375,7 +386,7 @@ class CarteTetra(override val carte:IndexedSeq[IndexedSeq[Case]],override val un
     val movr = unite.mov - unite.mov_e
     if (cazdep.cost <= movr && unitz.get(cazdep.caz).isEmpty) {
       val nunite = unite.factory(unite.pdv,unite.munition,unite.acombattu,(unite.mov_e + cazdep.cost),unite.joueur)
-      new CarteTetra(carte,update(delete(cazdep.caz)._2,cazdep.caz,Some(nunite))._2)
+      new CarteTetra(carte,update(delete(cazdep.caz)._2,cazdep.caz,Some(nunite))._2,equipe)
     } else this
   }
 
@@ -400,10 +411,11 @@ class CarteTetra(override val carte:IndexedSeq[IndexedSeq[Case]],override val un
 
 object CarteTetra {
   
+  val equipeByD = IndexedSeq.fill(20,20)(Guerre())
   def plaine() = {
     def caz(pos:(Int,Int))= Case(Foret(),None,pos)
     def coll = IndexedSeq.tabulate[Case](100,100)((y,x)=> caz((x,y)))
-    new CarteTetra(coll,HashMap())
+    new CarteTetra(coll,HashMap(),equipeByD)
   }
   
   def creBat(x:Batiment,coord:(Int,Int)) = Case(Plaine(),Some(x),coord)
@@ -419,7 +431,7 @@ object CarteTetra {
     var (i,j) = (-1,-1)
     val tabl: IndexedSeq[String] = IndexedSeq(strop.split("\n").toSeq:_*)
     val c = tabl.map( x => { i+= 1; j= (-1); x.map( y => {j+=1;readChar(y,(j,i)) })})
-    new CarteTetra(c,HashMap())
+    new CarteTetra(c,HashMap(),equipeByD)
 
   }
   def readFile(str:String):String= {

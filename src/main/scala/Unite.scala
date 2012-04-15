@@ -1,6 +1,6 @@
 package adwap.android.project
 import Math.min
-import org.anddev.andengine.util.Debug
+
 
 trait Artillerie {
   val range:(Int,Int)

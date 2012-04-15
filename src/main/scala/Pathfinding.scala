@@ -16,6 +16,7 @@ object PathFinder  {
   def dis_euc(case1:Case,case2:Case):Int = sqrt(pow((case1.coord._1 - case2.coord._1), 2) + pow((case1.coord._2 - case2.coord._2), 2)).toInt*10
 
   def djikstra(carte:Carte,start:Case,mode:Mode,costT:Int) = {
+	val joueur = carte.getUnite(start).get.joueur
     val startN = NodeD(start,None,0)
     val closedset = HashSet[NodeD]()
     val openset = Queue(startN)
@@ -28,7 +29,7 @@ object PathFinder  {
     while(!(openset.isEmpty)) {
       current = openset.dequeue()
       if (!(closedset.map(_.caz) contains current.caz)) {
-        val adj = current.adjacent(carte,mode,costT).span(closedset  contains _)        
+        val adj = current.adjacent(carte,mode,costT).filter(x => carte.getUnite(x.caz).forall(y => carte.equipe(joueur)(y.joueur) != Guerre)).span(closedset  contains _)        
         adj._1.filter(x => x.cost > current.cost + x.caz.typ.cost(mode).get).foreach(x => {
           x.parent = Some(current)
           x.cost = current.cost + x.caz.typ.cost(mode).get})                                                         
@@ -36,7 +37,7 @@ object PathFinder  {
         closedset.add(current)
       }
     }
-    (closedset-startN).map(x => PorMov(reco_path(x).map(_.caz).reverse,x.cost)).toList
+    (closedset-startN).filter(x => carte.getUnite(x.caz).isEmpty).map(x => PorMov(reco_path(x).map(_.caz).reverse,x.cost)).toList
   }
 
   def AStar(carte:Carte,start:Case,goal:Case,mode:Mode,heur:((Case,Case) => Int),j:Int=(-1)):(Int,List[Case]) = {
@@ -82,7 +83,7 @@ case class NodeD(val caz:Case,var parent:Option[NodeD],var cost:Int) {
 class NodaA(val caz:Case,var parent:Option[NodaA], var g:Int, val h:Int){
   def adjacent(carte:Carte,mode:Mode,heur:((Case,Case) => Int),goal:Case,j:Int):List[NodaA] = {
     carte.acote(caz).foldLeft[List[NodaA]](List())((acc,pos) => pos.typ.cost(mode) match {
-      case Some(x:Int) => if (carte.getUnite(pos).forall(_.joueur == j)) (new NodaA(pos,Some(this),g+x,heur(pos,goal)))::acc else acc
+      case Some(x:Int) => if (carte.getUnite(pos).forall(x => carte.equipe(x.joueur)(j) != Guerre)) (new NodaA(pos,Some(this),g+x,heur(pos,goal)))::acc else acc
       case None => acc
     })
   }

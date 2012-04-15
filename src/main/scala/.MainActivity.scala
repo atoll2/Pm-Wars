@@ -1,4 +1,4 @@
-
+package adwap.android.project
 
 import _root_.android.app.Activity
 import _root_.android.os.Bundle
@@ -67,16 +67,17 @@ class MainActivity extends BaseGameActivity with IPinchZoomDetectorListener with
 
   val TAG = "AndEngineTEst"
 
-  val carteg = CarteTetra.readCarte(
-    "FPFFFFFFFPFFF\nFPFFFFFFFPFFF\nFPPPPPPPPPFFF\nFPFFFFFFFFFFF\nFPFFFFFFFFFFF"
-  )
+  val carteg = CarteTetra.readCarte(CarteTetra.readFile("carte.txt"))
+
+  val (j1,j2,j3) = (Joueur(),Joueur(),Joueur())  
+  val (f1,f2,f3) = (new Fantassin(j1.id), new Fantassin(j2.id),new Fantassin(j3.id))
+  val (f,c) = (new Fantassin(j1.id),carteg((2,1)))
+  val chem = carteg((1,0))
+  val (c1,c2,c3) = (carteg((0,0)),carteg((8,3)),carteg((2,1)))        
+  val carte = carteg.factory(carteg.update(List((c1,Some(f1)),(c2,Some(f2)),(c3,Some(f3)),(c,Some(f)))))
+  val partie = new Partie(carte,List(j1,j2,j3),Param(1000))
+//  partie.start
   
-  val (j1,j2,j3) = (Joueur(Equipe(1),0),Joueur(Equipe(2),1),Joueur(Equipe(3),2))  
-    val (f1,f2,f3) = (Fantassin(j1),Fantassin(j2),Fantassin(j3))      
-      val (c1,c2,c3) = (carteg((0,0)),carteg((8,4)),carteg((1,1)))      
-        val cartecre      = carteg.factory(carteg.update(List((c1,Some(f1)),(c2,Some(f2)),(c3,Some(f3)))))
-  val partie     = new Partie(cartecre,List(j1,j2,j3),Param(1000))
-  def carte = partie.carte
   var scene:Scene = _
   var mCamera:ZoomCamera = _
 
@@ -304,22 +305,22 @@ class MainActivity extends BaseGameActivity with IPinchZoomDetectorListener with
 
   def inMove(caze:Case) = { 
     val sprite = casToS(caze)._1
-    val unite = carte.getUnite(caze) 
-    if (!unite.isEmpty) {
-      val inMOA = carte.inMoveOrAttaquable(caze)
-      inMOA._2 foreach (x=> {Debug.d(x.toString);scene.unregisterTouchArea(casToS(x)._1)})
+    val unite = carte.getUnite(caze)
+    if (unite.isDefined) {
+      val inMo = carte.inMove(caze)
+      inMo foreach (x=> {Debug.d(x.toString);scene.unregisterTouchArea(casToS(x.caz)._1)})
       if (rectDep contains caze)
         {
           rectDep(caze) foreach(x => { x.setVisible(true);scene.registerTouchArea(x)})
         } else {
-          inMOA._1 foreach ( x => {
+          inMo foreach ( x => {
             
             val rectangle = new Rectangle(0, 0, TAILLE_CASE, TAILLE_CASE) {			
 	      override def onAreaTouched( pSceneTouchEvent:TouchEvent, pTouchAreaLocalX:Float, pTouchAreaLocalY:Float) = {
                 if(pSceneTouchEvent.isActionDown()) {
                   Debug.d(sprite.toString())
-                  deplacer(caze,x,sprite)
-
+                  if (partie.isTour(unite.get.joueur)) deplacer(partie.joueur(unite.get.joueur),x,sprite)
+                                                          
 
 	        }
                 true
@@ -337,56 +338,19 @@ class MainActivity extends BaseGameActivity with IPinchZoomDetectorListener with
             scene.attachChild(rectangle)
           })
 
-          inMOA._2 foreach ( x => {
 
-            val rectangle = new Rectangle(0, 0, TAILLE_CASE, TAILLE_CASE) {			
-	      override def onAreaTouched( pSceneTouchEvent:TouchEvent, pTouchAreaLocalX:Float, pTouchAreaLocalY:Float) = {
-                if(pSceneTouchEvent.isActionDown()) {
-                  partie.carte.attaqueP(caze,x) match {
-                    case (true,_,_) => { Debug.d("ATTAQUE"); partie.attaque(partie.joueura,caze,x); dessunitz }
-                    case (false,_,_) => { Debug.d("PEUX PAS"); 
-                                         if (!(carte.acote(caze) contains x)) {
-                                       val por = carte.pathf(caze,x)
-                                        val bef = por.path.init.last
-                                       val des = carte.pathf(caze,bef)
-                                       deplacer(caze,des,sprite)}}
-                  }
-                  Debug.d("TOUCHE")
-
-
-	        }
-                true
-              }
-	    }
-            
-            rectDep.get(caze) match {
-              case Some(x) => rectDep += ((caze, rectangle :: x))
-              case None => rectDep += ((caze,List(rectangle)))
-            }
-            rectangle.setZIndex(10)
-            rectangle.setColor(0.010f, 0.1f, 0.255f, 0.5f)
-            rectangle.setPosition(x.coord._1*TAILLE_CASE,x.coord._2*TAILLE_CASE)
-            scene.registerTouchArea(rectangle)
-            scene.attachChild(rectangle)
-          })
         }
     }
 
   }
-  def deplacer(caze:Case,to:PorMov,sprite:Sprite) = {
-    val deplace = partie.deplacer(partie.joueura,caze,to)
-    if (deplace._1) {
+  def deplacer(joueur:Joueur,to:PorMov,sprite:Sprite) = {
+    partie ! ((joueur,Deplacement(CheckedL(to))))
       sprite.registerEntityModifier(new PathModifier(0.3f,deplacement(sprite,to.path),null,new IPathModifierListener(){
         override def onPathStarted(pPathModifier:PathModifier,pEntity:IEntity) = {effacer}
         override def onPathWaypointStarted(pPathModifier:PathModifier,pEntity:IEntity,pWaypointIndex:Int) = {}
         override def onPathWaypointFinished(pPathModifier:PathModifier,pEntity:IEntity,pWaypointIndex:Int) = {}
         override def onPathFinished(pPathModifier:PathModifier,pEntity:IEntity) = {dessunitz}
-      }))         
-
-    } else {
-      Debug.d(deplace._2)
-
-    } }
+      }))}
   
   def deplacement(sprite:Sprite,path:List[Case]) = path.foldLeft(new Path(path.length))( (acc,caze) =>{Debug.d(caze.coord.toString()); acc.to(caze.coord._1*TAILLE_CASE,caze.coord._2*TAILLE_CASE)})
 
@@ -467,7 +431,7 @@ def dessunitz:Unit = {
   }    
   def uniteToSprite(unite:Unite):TextureRegion = {
     unite match {
-      case x:Fantassin => fantassinTextureRegion(unite.joueur.id) match { case x:TextureRegion => x }
+      case x:Fantassin => fantassinTextureRegion(unite.joueur) match { case x:TextureRegion => x }
     }
 
   }
