@@ -5,7 +5,8 @@ import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable.HashSet
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.StringOps
-
+import java.io.InputStream
+import org.anddev.andengine.util.Debug
 
 abstract class TypeMap
 case class Iles() extends TypeMap
@@ -122,6 +123,8 @@ case class Case(val typ:Environnement[Mode],val dessus:Option[Batiment], val coo
 case class PorMov(path:List[Case],cost:Int) {
   val (caz,cazf)=(path.head,path.last)
   override def toString()= caz.toString()+"-->"+cazf.toString()
+  def moinsFinal(x:Mode)=(PorMov(path.tail,cost-cazf.typ.cost(x).get),cazf)
+
 
 }
 
@@ -333,22 +336,67 @@ abstract class Carte() {
     recInRange(cazi,max) filterNot (recInRange(cazi,min) contains) 
   }
 
-  def isInRange(caz:Case,caze:Case) = getUnite(caz).exists{case x:Artillerie => inRange(caz,x.range._1,x.range._2) contains caze
-                                                           case _=> false}
+  def isInRange(caz:Case,caze:Case) = getUnite(caz).exists(y => y match {
+    case x:Artillerie => inRange(caz,x.range._1,x.range._2) contains caze
+    case _ => acote(caz) contains caze
+  })
+                                                         
 
-  def inAttaquable(caz:Case,inMo:List[PorMov])= getUnite(caz) match {
-      case None => List()
-      case Some(x:Artillerie) => inRange(caz,x.range._1,x.range._2).filter( x => !(getUnite(x).isEmpty))
-      case Some(x:Unite) => ((inMo.map(y => y.caz)++List(caz)).flatMap(y => acote(y) ).filterNot(_==caz)).distinct.filter( y => !(getUnite(y).isEmpty))
+ def EveryAction(caz:Case):Option[(Map[Case,List[Action]],List[Case])] = {
+   getUnite(caz).map(y => 
+     {
+     val move_ar = inMove(caz)
+     val attaquable = move_ar.foldLeft((Map[Case,List[Action]](),List[Case]()))((acc,pos) => {
+       val ac = acote(pos.cazf)
+       val ennemis = ac.filter(x => x != caz && getUnite(x).exists(z=>equipe(z.joueur)(y.joueur)==Guerre()))
+       val tom = ennemis.foldLeft(acc._1)((acc2,pos2) => {
+         if (isInRange(caz,pos2) && !y.acombattu) {
+           acc2 + ((pos2,List(Attaque(CheckedC(caz),CheckedC(pos2)))))
+         } else {
+         if (acc2 contains pos2) {
+           acc2.get(pos2).get.head match {
+             case Deplacement(CheckedL(path)) => {
+               if (pos.cost < path.cost) acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))
+               else acc2
+           }
+           }
 
-    }
+         } else acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))  }})
+       val lat = acc._2 union ac
+       (tom,lat)})
+       
 
-  def inMoveOrAttaquable(caz:Case):(List[PorMov],List[Case])= {
-    val inMov = inMove(caz)
-    val inAttaq =  inAttaquable(caz,inMov)
-    (inMov.filterNot(x => inAttaq contains x.caz),inAttaq)
-  }
+                                                                
+     val mapac = move_ar.foldLeft(attaquable._1)((acc,pos) => {
+         var la:List[Action] = List()     
 
+       if (getUnite(pos.cazf).isEmpty) {
+         la ::= Deplacement(CheckedL(pos))
+       }
+
+
+       Debug.d(getUnite(pos.cazf).toString)
+       getUnite(pos.cazf).foreach(x => {
+         if (x.joueur == y.joueur) {
+           if (x.getClass() == y.getClass) la ::= Joindre(CheckedL(pos))
+           else {
+             x match {
+               case x:Embarcadaire => la ::= Embarquement(CheckedL(pos))
+               case _ => ()
+             }
+           }         
+         }
+       })
+
+       if (pos.cazf.dessus.isDefined && pos.cazf.dessus.get.joueur != y.joueur) {
+         la ::= Capture(CheckedC(pos.cazf))
+       }
+     acc + ((pos.cazf,la.reverse))                                  
+})
+       (mapac,attaquable._2)
+     })}
+
+                    
   def hauteur:Int
   def largeur:Int
 }
@@ -384,9 +432,11 @@ class CarteTetra(val carte:IndexedSeq[IndexedSeq[Case]],val unitz:HashMap[Case, 
   def deplace(cazdep:PorMov):Carte = {
     val unite = getUnite(cazdep.caz).get
     val movr = unite.mov - unite.mov_e
-    if (cazdep.cost <= movr && unitz.get(cazdep.caz).isEmpty) {
+
+
+    if (cazdep.cost <= movr && unitz.get(cazdep.cazf).isEmpty) {
       val nunite = unite.factory(unite.pdv,unite.munition,unite.acombattu,(unite.mov_e + cazdep.cost),unite.joueur)
-      new CarteTetra(carte,update(delete(cazdep.caz)._2,cazdep.caz,Some(nunite))._2,equipe)
+      new CarteTetra(carte,update(delete(cazdep.caz)._2,cazdep.cazf,Some(nunite))._2,equipe)
     } else this
   }
 
@@ -436,6 +486,13 @@ object CarteTetra {
   }
   def readFile(str:String):String= {
     val source = scala.io.Source.fromFile(str)
+    val lines = source.mkString
+    source.close ()
+    lines
+  }
+
+  def readFile(str:InputStream):String= {
+    val source = scala.io.Source.fromInputStream(str)
     val lines = source.mkString
     source.close ()
     lines

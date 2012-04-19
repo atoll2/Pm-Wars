@@ -35,6 +35,7 @@ class ServerClient(var remote:Option[Remote],socket:Socket) extends Actor {
 def act() {
   loop {
    receive {
+    case y:Action => ()
     case _ => println("lol")
    }
   }

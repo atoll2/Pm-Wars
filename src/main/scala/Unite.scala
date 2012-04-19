@@ -28,8 +28,12 @@ val joueur:Int
 }
 
 
-abstract class Unite(val pdv:Int = 100,val munition:Int,val acombattu:Boolean,val mov_e:Int,val joueur:Int) extends Mode{
-
+abstract class Unite() extends Mode{
+  val pdv:Int
+  val munition:Int
+  val acombattu:Boolean
+  val mov_e:Int
+  val joueur:Int
   val typ:String
 
   val perforation:Int
@@ -46,8 +50,8 @@ abstract class Unite(val pdv:Int = 100,val munition:Int,val acombattu:Boolean,va
   def degat(blind:Int):Int = degat(puissance,perforation,blind)
   def reactiverUnite = factory(pdv,munition,false,0)
   def reparer(x:Int) = { 
-    val repar = x min (x+pdv-100)
-    (cout/pdv*repar,factory(pdv+repar,munitionMax,acombattu,mov_e,joueur))
+    val repar = (x + pdv) min 100
+    (cout/pdv*repar,factory(repar,munitionMax,acombattu,mov_e,joueur))
   }
   def joindre(x:Unite)=factory((pdv+x.pdv).min(100),(munition-x.munition-munitionMax).max(0))
 
@@ -56,26 +60,20 @@ abstract class Unite(val pdv:Int = 100,val munition:Int,val acombattu:Boolean,va
 }
 
 
-abstract class Vehicule(override val pdv:Int,override val munition:Int, val fuel:Int,
-override val acombattu:Boolean, override val mov_e:Int,override val joueur:Int)
-         extends Unite(pdv,munition,acombattu,mov_e,joueur){
+abstract class Vehicule() extends Unite(){
+         
            val fuelMax:Int
            override def reparer(x:Int) = (cout/100*x,factory(pdv+x,munitionMax,fuelMax,acombattu,mov_e,joueur))
            def factory(pdv:Int,munition:Int,fuel:Int,acombattu:Boolean,mov_e:Int,joueur:Int):Vehicule
                                                  
 
-         }
+}
 
-abstract class Infanterie(override val pdv:Int,override val munition:Int,
-                          override val acombattu:Boolean, override val mov_e:Int,override val joueur:Int)
-         extends Unite(pdv,munition,acombattu,mov_e,joueur) with Marchable with Captur {
-           
+abstract class Infanterie() extends Unite() with Marchable with Captur
 
-         }
-
-case class Bazooka(override val pdv:Int,override val munition:Int,override val acombattu:Boolean,
-              override val mov_e:Int, override val joueur:Int)
-extends Infanterie(pdv,munition,acombattu,mov_e,joueur) with ArmeSecondaire
+case class Bazooka(val pdv:Int,val munition:Int,
+                   val acombattu:Boolean,val mov_e:Int, val joueur:Int) 
+     extends Infanterie() with ArmeSecondaire
 {
 
   def this(j:Int)=this(100,0,false,0,j)
@@ -94,9 +92,10 @@ extends Infanterie(pdv,munition,acombattu,mov_e,joueur) with ArmeSecondaire
 
 }
 
-case class Fantassin(override val pdv:Int,override val acombattu:Boolean,
-                override val mov_e:Int,override val joueur:Int)
-extends Infanterie(pdv,0,acombattu,mov_e,joueur) with ArmeSecondaire{
+case class Fantassin(val pdv:Int,val acombattu:Boolean,
+                     val mov_e:Int,val joueur:Int)
+     extends Infanterie() with ArmeSecondaire
+{
   
   def this(joueur:Int)=this(100,false,0,joueur)
   def factory(podv:Int,whatever:Int,acomb:Boolean,movr:Int,j:Int)= copy(pdv=podv,acombattu=acomb,mov_e=movr,joueur=j)
@@ -110,4 +109,5 @@ extends Infanterie(pdv,0,acombattu,mov_e,joueur) with ArmeSecondaire{
   val perforation = 0
   val mov = 20
   val munitionMax = 0
+  val munition = 0
 }

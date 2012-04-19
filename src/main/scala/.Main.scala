@@ -1,6 +1,6 @@
-package adwap.android.project
+//package adwap.android.project
 
-object Test extends App {
+//object Test extends App {
   //  val carteb:Carte = CarteTetra.plaine()
   val serv = new  Server(3)
 

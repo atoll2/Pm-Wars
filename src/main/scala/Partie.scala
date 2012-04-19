@@ -1,9 +1,11 @@
 package adwap.android.project
+
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.WrappedString
 import scala.util.Random 
 import scala.actors.Actor
 import scala.actors.Actor._
+import org.anddev.andengine.util.Debug
 
 abstract class Money 
 case class UncheckedM(m:Int) extends Money
@@ -53,7 +55,7 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
   def joueura = joueur(tourj)
   def carte = historique.head._2
   def joueur(id:Int):Joueur = tabjrs(id%joueurstart.length).head
-  def add(a:Action,carte:Carte=carte,li:List[Joueur]=List()) = (a,carte,update(li))::historique
+  def add(a:Action,carte:Carte=carte,li:List[Joueur]=List()) = historique::=(a,carte,update(li))
   def update(jrs:List[Joueur])= {
     jrs.foreach(j=>tabjrs.updated(j.id,j::tabjrs(j.id)))
     jrs.map(_.id)
@@ -71,11 +73,12 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
   def back = {
     historique.head._3.foreach(x => tabjrs.updated(x,tabjrs(x).tail))
     historique = historique.tail                               
+    
   }
   def reset = {
     historique = List(historique.last)
     tour = 0
-    next
+    startp(tour)
   }
   startp(tour)
 
@@ -88,7 +91,6 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
     }
   }
   def doIt(a:Action,j:Joueur) = {
-   
       val done:(Option[Carte],Option[List[Joueur]]) = a match {
         case Attaque(CheckedC(from),CheckedC(to))  if (j.id==tourj) => (Some(carte.attaque(from,to).get),None)
         case Give(CheckedM(cb),to)  if (j.id==tourj) => (None,Some(j.give(cb,joueur(to))))
@@ -235,7 +237,7 @@ case class Remote(val name:String,override val bourse:Int,override val id:Int,ov
 object Joueur {
     var id = -1
     val r = new Random()
-    def apply() = { id+=1; Local(r.nextInt(16546).toString(),0,id)}
+    def apply() = {id+=1; Local(r.nextInt(16546).toString(),0,id)}
     def apply(str:String)= {id+=1;Local(str,0,id)}
   }
 

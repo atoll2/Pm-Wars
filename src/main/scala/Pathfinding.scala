@@ -29,7 +29,7 @@ object PathFinder  {
     while(!(openset.isEmpty)) {
       current = openset.dequeue()
       if (!(closedset.map(_.caz) contains current.caz)) {
-        val adj = current.adjacent(carte,mode,costT).filter(x => carte.getUnite(x.caz).forall(y => carte.equipe(joueur)(y.joueur) != Guerre)).span(closedset  contains _)        
+        val adj = current.adjacent(carte,mode,costT).filter(x => carte.getUnite(x.caz).forall(y => carte.equipe(joueur)(y.joueur) != Guerre())).span(closedset  contains _)        
         adj._1.filter(x => x.cost > current.cost + x.caz.typ.cost(mode).get).foreach(x => {
           x.parent = Some(current)
           x.cost = current.cost + x.caz.typ.cost(mode).get})                                                         
@@ -37,7 +37,7 @@ object PathFinder  {
         closedset.add(current)
       }
     }
-    (closedset-startN).filter(x => carte.getUnite(x.caz).isEmpty).map(x => PorMov(reco_path(x).map(_.caz).reverse,x.cost)).toList
+    (closedset-startN).filter(x => carte.getUnite(x.caz).forall(x => carte.equipe(x.joueur)(joueur) != Guerre())).map(x => PorMov(reco_path(x).map(_.caz).reverse,x.cost)).toList
   }
 
   def AStar(carte:Carte,start:Case,goal:Case,mode:Mode,heur:((Case,Case) => Int),j:Int=(-1)):(Int,List[Case]) = {
