@@ -29,6 +29,7 @@ val joueur:Int
 
 
 abstract class Unite() extends Mode{
+  val id:Int
   val pdv:Int
   val munition:Int
   val acombattu:Boolean
@@ -45,10 +46,11 @@ abstract class Unite() extends Mode{
   val vision:Int
   val coefpdv:Int = 1
 
-  def factory(podv:Int,mounition:Int=munition,acomb:Boolean=acombattu,movr:Int=mov_e,joueur:Int=joueur):Unite
+  def factory(podv:Int,mounition:Int=munition,acomb:Boolean=true,movr:Int=mov_e,joueur:Int=joueur):Unite
   def degat(puis:Int,perfo:Int,blind:Int):Int = puis*pdv/10*((perfo-blind).max(0))
   def degat(blind:Int):Int = degat(puissance,perforation,blind)
   def reactiverUnite = factory(pdv,munition,false,0)
+  def desactiverUnite = factory(pdv,munition,true,0)
   def reparer(x:Int) = { 
     val repar = (x + pdv) min 100
     (cout/pdv*repar,factory(repar,munitionMax,acombattu,mov_e,joueur))
@@ -88,6 +90,7 @@ case class Bazooka(val pdv:Int,val munition:Int,
   val perforation = 1
   val mov = 10
   val munitionMax = 4
+  val id = 2
 
 
 }
@@ -110,4 +113,5 @@ case class Fantassin(val pdv:Int,val acombattu:Boolean,
   val mov = 20
   val munitionMax = 0
   val munition = 0
+  val id = 1
 }

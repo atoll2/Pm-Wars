@@ -41,7 +41,7 @@ case class GiveUp() extends Event
 
 case class Param(val mByB:Int)
 
-class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
+class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param,inter:Interface) 
 {
 
   var lactions:List[Action] = List()
@@ -61,14 +61,17 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
     jrs.map(_.id)
   }
   def joueurs = tabjrs.map(_.head).toList
-  def next = {
+  def next:Unit = {
     if (!(joueura.aperdu)) {
-    val resunit = HashMap(joueura.unitz(carte).mapValues((x) => x.reactiverUnite).toSeq:_*)
-    val rescarte = carte.factory(carte.unitz ++: resunit)
+    val resunit:HashMap[Case,Unite] = joueura.unitz(carte).mapValues(x => x.reactiverUnite).foldLeft(carte.unitz)((acc,pos) => acc + pos)
+    val rescarte = carte.factory(resunit)
     add(Next(),rescarte)
     tour +=1
-    }
     startp(tourj)
+    } else { 
+      tour +=1
+      next
+  }
   }
   def back = {
     historique.head._3.foreach(x => tabjrs.updated(x,tabjrs(x).tail))
@@ -82,33 +85,49 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
   }
   startp(tour)
 
-  def act() {
-    while(true) {
-      receive { 
-        case (j:Joueur,x:Action) => checkA(x,j).foreach(doIt(_,j))
-        case _ => ()
-             }
-    }
-  }
+  def eval(j:Joueur,x:Action) = checkA(x,j).foreach(doIt(_,j))
+
   def doIt(a:Action,j:Joueur) = {
-      val done:(Option[Carte],Option[List[Joueur]]) = a match {
-        case Attaque(CheckedC(from),CheckedC(to))  if (j.id==tourj) => (Some(carte.attaque(from,to).get),None)
-        case Give(CheckedM(cb),to)  if (j.id==tourj) => (None,Some(j.give(cb,joueur(to))))
-        case Deplacement(CheckedL(pormov))  if (j.id==tourj) => (Some(carte.deplace(pormov)),None)
-        case Capture(CheckedC(caze))  if (j.id==tourj) => (Some(carte.capture(caze)),None)
-        case Joindre(CheckedL(dep))  if (j.id==tourj) =>  (Some(carte.joindre(dep.caz,dep.cazf)),None)
-        case Embarquement(CheckedL(dep))  if (j.id==tourj) => (Some(carte.embarquement(dep.caz,dep.cazf)),None)
-        case Produire(CheckedC(caze),unite)  if (j.id==tourj) => {
+      val done:(Option[Carte],Option[List[Joueur]],() => Unit) = a match {
+        case Attaque(CheckedC(from),CheckedC(to))  if (j.id==tourj) => 
+          (Some(carte.attaque(from,to).get),None, () => inter.attaque(from,to))
+        
+        case Give(CheckedM(cb),to) =>
+          (None,Some(j.give(cb,joueur(to))),() => ())
+          
+        case Deplacement(CheckedL(pormov)) => 
+          (Some(carte.deplace(pormov)),None,() => inter.deplacer(pormov))
+        
+        case Capture(CheckedC(caze))  => 
+          (Some(carte.capture(caze)),None, () => inter.capturer(caze))
+        
+        case Joindre(CheckedL(dep))  => 
+          (Some(carte.joindre(dep.caz,dep.cazf)),None, () => inter.joindre(dep))
+        
+        case Embarquement(CheckedL(dep)) =>
+          (Some(carte.embarquement(dep.caz,dep.cazf)),None, () => ())
+
+        case Produire(CheckedC(caze),unite) => {
           val pro = carte produire(caze,unite,j)
-          (Some(pro._1),Some(List(pro._2)))
+          (Some(pro._1),Some(List(pro._2)),() => inter.produire(caze,unite))
         }
-        case Detruire(CheckedC(caze))  if (j.id==tourj) => (Some(carte.update(None,caze)),None)
-        case Next()  if (j.id==tourj) => { next; (None,None) }
-        case GiveUp()  if (j.id==tourj) => (None,None)
-        case Equipe(st,z) if (st == Guerre()) => (Some(carte.nvStatut(j.id,z,st)),None)
-        case Message(msg) => { println(msg); (None,None) }
-        case MessageT(msg) => { println(msg); (None,None) }
-        case _ => (None,None)
+
+        case Detruire(CheckedC(caze))  =>
+          (Some(carte.update(None,caze)),None,() => ())
+          
+        case Next() =>  (None,None,() => {next;inter.next})
+
+        case GiveUp() => (None,None,() => ())
+          
+        case Equipe(st,z) => 
+          (Some(carte.nvStatut(j.id,z,st)),None,() => ())
+
+        case Message(msg) => (None,None, () => println(msg))
+          
+        case MessageT(msg) => (None,None,() => println(msg))
+
+        case _ => (None,None,() => ())
+
       }
       if (done._1.isDefined) {
         if (done._2.isDefined) add(a,done._1.get,done._2.get)
@@ -119,6 +138,7 @@ class Partie(crecarte:Carte,joueurstart:List[Joueur],param:Param) extends Actor
           add(a,carte,done._2.get)
         }
       }
+      done._3()
     }
   
 
@@ -164,7 +184,14 @@ def checkA(a:Action,j:Joueur):Option[Action] = {
         case _ => Some(a)
 
       }
-    } else None
+    } else a match {
+      
+      case Equipe(st,z) if (st == Guerre()) => 
+        Some(Equipe(st,z))
+
+      case _ => Some(a)
+      
+    }
   }
 
 
@@ -196,7 +223,7 @@ def checkA(a:Action,j:Joueur):Option[Action] = {
           (acc._1 + repareU._1,acc._2+((cazunit._1,repareU._2)))})    
       }
 
-      def getMoney = player.money(player.batiz(carte).foldLeft(0)( (acc,b) => acc + param.mByB))
+      def getMoney = player.money(player.batiz(carte.unitz).foldLeft(0)( (acc,b) => acc + param.mByB))
       val reparation = repareB(player.unitz(carte),20) 
       add(StartT(),carte.factory(carte.unitz ++: reparation._2),List(getMoney.money(-(reparation._1))))
     }
@@ -204,30 +231,35 @@ def checkA(a:Action,j:Joueur):Option[Action] = {
   }    
   
   
-abstract class Joueur(name:String,val bourse:Int,val id:Int,val aperdu:Boolean=false){
+abstract class Joueur(){
+
     override def toString()= "J > Nom:" +name +" & Bourse: " +bourse.toString
+
+    val name:String
+    val bourse:Int
+    val id:Int
+    val aperdu:Boolean=false
     def money(x:Int):Joueur// = new Joueur(name,bourse +x,equipe,id)
     def give(x:Int,y:Joueur) = List(money(-x),y.money(x))
     def unitz(carte:Carte):HashMap[Case,Unite] = carte.getUnitzJ.get(id).getOrElse(HashMap[Case,Unite]())
-    def batiz(hmunitz:HashMap[Case,Unite]):HashMap[Case,Unite] = hmunitz.filter( kv => !(kv._1.dessus.isEmpty))
-    def batiz(carte:Carte):HashMap[Case,Unite]  = batiz(carte.getUnitzJ.get(id).getOrElse(HashMap[Case,Unite]()))
+    def batiz(hmunitz:HashMap[Case,Unite]):HashMap[Case,Unite] = hmunitz.filter( kv => kv._1.dessus.exists(x => x.joueur == Some(id)))
     def isTour(partie:Partie) = partie.isTour(this)
     def perdre:Joueur// = new Joueur(name,bourse,equipe,id,true)
     def startp(x:Partie):Unit = ()
   }
 
-case  class Local(name:String,override val bourse:Int, override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,id,aperdu) {
+case  class Local(name:String,override val bourse:Int, override val id:Int,override val  aperdu:Boolean=false) extends Joueur() {
   def money(x:Int)=copy(bourse=bourse+x)
   def perdre=copy(aperdu=true)
   override def startp(partie:Partie) = {}
 }
 
-case class IA(ia:Int,name:String,override val bourse:Int,override val id:Int,override val  aperdu:Boolean=false) extends Joueur(name,bourse,id,aperdu) {
+case class IA(ia:Int,name:String,override val bourse:Int,override val id:Int,override val  aperdu:Boolean=false) extends Joueur() {
   def money(x:Int)=copy(bourse=bourse+x)
   def perdre=copy(aperdu=true)
 }
 
-case class Remote(val name:String,override val bourse:Int,override val id:Int,override val aperdu:Boolean,remote:ServerClient) extends Joueur(name,bourse,id,aperdu) {
+case class Remote(val name:String,override val bourse:Int,override val id:Int,override val aperdu:Boolean,remote:ServerClient) extends Joueur() {
   def money(x:Int)=copy(bourse=bourse+x)
   def perdre=copy(aperdu=true)
 }

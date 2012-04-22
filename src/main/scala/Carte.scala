@@ -20,11 +20,16 @@ abstract trait Environnement[+T <: Mode] {
   val furtivite = 0
   val vision = 0
   val stealth = 0
+
 }
-abstract trait NaviEnvi
-{ def cost(x:Naviguable) = Some(1) }
-abstract trait SurvoEnvi 
-{ def cost(x:Survolable) = Some(1) }
+abstract trait NaviEnvi extends Environnement[Naviguable]
+{ def cost(x:Naviguable) = Some(1) 
+  def cost(x:Mode) = None
+}
+abstract trait SurvoEnvi extends Environnement[Survolable]
+{ def cost(x:Survolable) = Some(1)
+  def cost(x:Mode) = None
+ }
 trait Naviguable  extends Mode
 trait Survolable  extends Mode 
 trait Marchable   extends Mode
@@ -33,11 +38,20 @@ trait Roulable extends Chenillable
 trait Capturable extends Mode {
   val joueur:Option[Int]
   val captur:Int
-  def factory(de:Int,j:Option[Int]):Batiment
-  def capture(de:Int,j:Int) = { 
+  def factory(de:Int,j:Option[Int]):Batiment 
+  def capture(de:Int,j:Int):Batiment= { 
     val n = (captur - de)
       if (n > 0) factory(n,joueur)
-      else factory(100,Some(j))
+      else factory(20,Some(j))
+  }
+}
+
+case class Plaine() extends Environnement[Roulable] {
+  def cost(x:Mode) = x match {
+    case x:Roulable => Some(10)
+    case x:Chenillable => Some(5)
+    case x:Marchable => Some(4)
+    case _ => None
   }
 }
 
@@ -52,18 +66,9 @@ case class Foret() extends  Environnement[Roulable] {
     case x:Marchable => Some(9)
     case _ => None
   }
+
 }
 
-case class Plaine() extends Environnement[Roulable] {
-  def cost(x:Mode) = x match {
-    case x:Roulable => Some(10)
-    case x:Chenillable => Some(5)
-    case x:Marchable => Some(4)
-    case _ => None
-  }
-}
-
-case class Mer()  extends NaviEnvi
 case class Montagne() extends Environnement[Marchable] { 
 
   def cost(x:Mode) = x match {
@@ -71,6 +76,10 @@ case class Montagne() extends Environnement[Marchable] {
     case _ => None
   }
   override val vision = 50
+}
+
+
+case class Mer()  extends NaviEnvi {
 }
 
 
@@ -222,14 +231,20 @@ abstract class Carte() {
     }
   }
 
-  def capture(caze:Case)= (caze.dessus,getUnite(caze)) match {
-    case (Some(x:Capturable),Some(y:Captur)) => update(caze.factory(Some(x.capture((y.pdv)/2,y.joueur))))
+  def capture(caze:Case) ={ 
+
+    (caze.dessus,getUnite(caze)) match {
+    case (Some(x:Capturable),Some(y:Captur)) => {
+      val ncase = caze.factory(Some(x.capture(y.pdv/10,y.joueur)))
+      val ncarte = update(Some(y.desactiverUnite),caze) 
+      ncarte.remplacer(caze,ncase)
+      }
     case _ => this
   }
-
+                         }
   def attaqueUni(unite:Unite,ennemi:Unite,caz:Case) = {
       def create(pdvr:Int,m:Boolean):(Option[Unite],Option[Unite]) = {
-        val thisshit = Some(unite.factory(unite.pdv,mounition = {if (m) unite.munition+1 else unite.munition}))
+        val thisshit = Some(unite.factory(unite.pdv,acomb=true,mounition = {if (m) unite.munition+1 else unite.munition}))
         if (pdvr > 1) (thisshit,Some(ennemi.factory(pdvr,mounition=ennemi.munition,joueur = ennemi.joueur))) 
         else (thisshit,None)
       }
@@ -276,13 +291,13 @@ abstract class Carte() {
   def attaque(cazunit:Case,cazennemi:Case):Option[Carte]= {
     if (canAttaque(cazunit,cazennemi)) {
       val (x,y) = attaqueP(cazunit,cazennemi)
-      Some(factory(update(List((cazunit,x),(cazennemi,y)))))
+      Some(factory(update(List((cazunit,x),(cazennemi,y.map(_.reactiverUnite))))))
     }
     else None
   }
 
   
-
+  def remplacer(x:Case,y:Case):Carte
   def update(cazunitl:List[(Case,Option[Unite])]):HashMap[Case,Unite] 
   def update(unite:Option[Unite],caze:Case):Carte
   def update(caz:Case):Carte
@@ -343,57 +358,63 @@ abstract class Carte() {
                                                          
 
  def EveryAction(caz:Case):Option[(Map[Case,List[Action]],List[Case])] = {
+
    getUnite(caz).map(y => 
      {
-     val move_ar = inMove(caz)
-     val attaquable = move_ar.foldLeft((Map[Case,List[Action]](),List[Case]()))((acc,pos) => {
-       val ac = acote(pos.cazf)
-       val ennemis = ac.filter(x => x != caz && getUnite(x).exists(z=>equipe(z.joueur)(y.joueur)==Guerre()))
-       val tom = ennemis.foldLeft(acc._1)((acc2,pos2) => {
-         if (isInRange(caz,pos2) && !y.acombattu) {
-           acc2 + ((pos2,List(Attaque(CheckedC(caz),CheckedC(pos2)))))
-         } else {
-         if (acc2 contains pos2) {
-           acc2.get(pos2).get.head match {
-             case Deplacement(CheckedL(path)) => {
-               if (pos.cost < path.cost) acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))
-               else acc2
-           }
-           }
+       val achack = (PorMov(List(caz,acote(caz).head,caz),0))
+       val move_ar = achack::inMove(caz)
+       val attaquable = move_ar.foldLeft((Map[Case,List[Action]](),List[Case]()))((acc,pos) => {
+         val ac = pos.cazf::acote(pos.cazf)
+         val ennemis = ac.filter(x => x != caz && getUnite(x).exists(z=>equipe(z.joueur)(y.joueur)==Guerre()))
+         val tom = ennemis.foldLeft(acc._1)((acc2,pos2) => {
+           if (isInRange(caz,pos2) && !y.acombattu) {
+             acc2 + ((pos2,List(Attaque(CheckedC(caz),CheckedC(pos2)))))
+           } else {
+             if (acc2 contains pos2) {
+               acc2.get(pos2).get.head match {
+                 case Deplacement(CheckedL(path)) => {
+                   if (pos.cost < path.cost) acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))
+                   else acc2
+                 }
+               }
 
-         } else acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))  }})
-       val lat = acc._2 union ac
-       (tom,lat)})
+             } else acc2 + ((pos2,List(Deplacement(CheckedL(pos)))))  }})
+         val lat = acc._2 union ac
+         (tom,lat)})
        
 
-                                                                
-     val mapac = move_ar.foldLeft(attaquable._1)((acc,pos) => {
-         var la:List[Action] = List()     
+       
+       val mapac = {
+         if (y.acombattu) Map[Case,List[Action]]()
+         else {move_ar.foldLeft(attaquable._1)((acc,pos) => {
+           var la:List[Action] = List()     
 
-       if (getUnite(pos.cazf).isEmpty) {
-         la ::= Deplacement(CheckedL(pos))
-       }
+           if (getUnite(pos.cazf).isEmpty) {
+             la ::= Deplacement(CheckedL(pos))
+           }
 
 
-       Debug.d(getUnite(pos.cazf).toString)
-       getUnite(pos.cazf).foreach(x => {
-         if (x.joueur == y.joueur) {
-           if (x.getClass() == y.getClass) la ::= Joindre(CheckedL(pos))
-           else {
-             x match {
-               case x:Embarcadaire => la ::= Embarquement(CheckedL(pos))
-               case _ => ()
+
+           getUnite(pos.cazf).foreach(x => {
+             if (x.joueur == y.joueur) {
+               if (x.getClass() == y.getClass && x!=y) la ::= Joindre(CheckedL(pos))
+               else {
+                 x match {
+                   case x:Embarcadaire => la ::= Embarquement(CheckedL(pos))
+                   case _ => ()
+                 }
+               }         
              }
-           }         
-         }
-       })
+           })
 
-       if (pos.cazf.dessus.isDefined && pos.cazf.dessus.get.joueur != y.joueur) {
-         la ::= Capture(CheckedC(pos.cazf))
-       }
-     acc + ((pos.cazf,la.reverse))                                  
-})
-       (mapac,attaquable._2)
+           if (pos.cazf.dessus.isDefined && pos.cazf.dessus.get.joueur != Some(y.joueur)) {
+             la ::= Capture(CheckedC(pos.cazf))
+           }
+           if (la.isEmpty) acc
+           else acc + ((pos.cazf,la.reverse))                                  
+
+         })}}
+       (mapac,attaquable._2-caz)
      })}
 
                     
@@ -409,7 +430,14 @@ class CarteTetra(val carte:IndexedSeq[IndexedSeq[Case]],val unitz:HashMap[Case, 
   def nvStatut(x:Int,y:Int,z:Statut)= new CarteTetra(carte,unitz,equipe.updated(x,equipe(x).updated(y,z)).updated(y,equipe(y).updated(x,z)))
   def getUnitz = unitz.toList
   val getUnitzJ = unitz.groupBy( kv => kv._2.joueur)
-
+  
+  def remplacer(x:Case,y:Case) = {
+    val (xx,yy)=x.coord
+    val ncarte = carte.updated(yy,carte(yy).updated(xx,y))
+    val nunitz= (unitz + ((y,unitz(x))))-x
+    Debug.d(nunitz.mapValues(x => x.acombattu).toString)
+    new CarteTetra(ncarte,nunitz,equipe)
+  }
 
   def factory(unit:HashMap[Case, Unite]):Carte = factory(carte,unit)
   def factory(cart:IndexedSeq[IndexedSeq[Case]]):Carte= factory(cart,unitz)
@@ -474,7 +502,7 @@ object CarteTetra {
     case 'P' => creCase(Plaine(),coord)
     case 'M' => creCase(Montagne(),coord)
     case 'F' => creCase(Foret(),coord)
-    case 'V' => creBat(Ville(None,10),coord)
+    case 'V' => creBat(Ville(None,20),coord)
   }
   def readCarte(str:String) = {
     val strop = new StringOps(str)
